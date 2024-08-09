@@ -3,7 +3,7 @@ use std::{
     simd::{cmp::SimdPartialOrd, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount},
 };
 
-use super::{Pixel, Point};
+use super::Point;
 
 #[macro_export]
 macro_rules! simd_triangle_rasterizer {
