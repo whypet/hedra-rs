@@ -2,6 +2,7 @@
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
+use std::time::Instant;
 
 use hedra::rast::{Block, Frame, Pixel, Point};
 use hedra::{rast::TriangleRasterizerData, simd_triangle_rasterizer};
@@ -19,6 +20,8 @@ fn rasterizer(data: TriangleRasterizerData<'_, i32>) {
 struct AppData {
     window: Rc<Window>,
     surface: Surface<Rc<Window>, Rc<Window>>,
+    instant: Instant,
+    frames: usize,
 }
 
 #[derive(Default)]
@@ -35,8 +38,14 @@ impl ApplicationHandler for App {
         );
         let context = Context::new(window.clone()).unwrap();
         let surface = Surface::new(&context, window.clone()).unwrap();
+        let instant = Instant::now();
 
-        self.data = Some(AppData { window, surface });
+        self.data = Some(AppData {
+            window,
+            surface,
+            instant,
+            frames: 0,
+        });
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
@@ -82,6 +91,14 @@ impl ApplicationHandler for App {
                 rasterizer(rast_data);
 
                 buffer.present().unwrap();
+
+                data.frames += 1;
+
+                if data.instant.elapsed().as_secs() >= 1 {
+                    println!("fps: {}", data.frames);
+                    data.frames = 0;
+                    data.instant = Instant::now();
+                }
 
                 data.window.request_redraw();
             }
