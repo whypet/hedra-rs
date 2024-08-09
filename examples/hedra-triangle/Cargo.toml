@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 hedra = { path = "../../hedra", features = ["simd"] }
+softbuffer = "0.4.5"
+winit = "0.30.5"

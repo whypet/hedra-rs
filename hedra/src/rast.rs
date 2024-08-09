@@ -3,17 +3,15 @@ use std::ops::{Mul, Sub};
 #[cfg(feature = "simd")]
 pub mod simd;
 
-pub type Pixel = Point<u32>;
-
-pub trait TriangleRasterizer: FnMut(TriangleRasterizerData<'_>) {}
+pub type Pixel = Point<usize>;
 
 pub struct Frame<'a> {
     pub dst: &'a mut [u32],
-    pub width: u32,
-    pub height: u32,
+    pub width: usize,
+    pub height: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Point<T> {
     pub x: T,
     pub y: T,
@@ -24,10 +22,10 @@ pub struct Block {
     pub max: Pixel,
 }
 
-pub struct TriangleRasterizerData<'a> {
+pub struct TriangleRasterizerData<'a, T> {
     pub frame: Frame<'a>,
     pub block: Block,
-    pub list: &'a [[Pixel; 3]],
+    pub list: &'a [[Point<T>; 3]],
 }
 
 impl From<Pixel> for Point<i32> {
@@ -40,8 +38,8 @@ impl From<Pixel> for Point<i32> {
 }
 
 #[inline(always)]
-fn edge<F: Sub<Output = F> + Mul<Output = F>>(x: F, y: F, v1_x: F, v1_y: F, dvx: F, dvy: F) -> F {
-    (dvx * (y - v1_y)) - (dvy * (x - v1_x))
+fn edge<T: Sub<Output = T> + Mul<Output = T>>(p: Point<T>, v1: Point<T>, dv: Point<T>) -> T {
+    (dv.x * (p.y - v1.y)) - (dv.y * (p.x - v1.x))
 }
 
 /*
