@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hedra = { path = "../../hedra" }
+hedra = { path = "../../hedra", features = ["simd"] }

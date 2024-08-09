@@ -12,7 +12,7 @@ pub trait RwBuffer: Buffer {
     fn write(&mut self, src: &[u8]);
 }
 
-pub trait LockableBuffer<F: FnOnce()>: RwBuffer {
+pub trait LockBuffer<F: FnOnce()>: RwBuffer {
     fn lock(&mut self) -> BufferGuard<'_, F>;
 }
 
