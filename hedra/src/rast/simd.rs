@@ -7,36 +7,55 @@ use super::Point;
 
 #[macro_export]
 macro_rules! simd_triangle_rasterizer {
-    ($elem:ty,$lanes:literal,$data:ident,$pixel:expr) => {{
-        use std::simd::{Mask, Simd};
-        use $crate::rast::simd::*;
+    ($type:ident<$elem:ty,$lanes:literal>) => {
+        struct $type {
+            n_vec: std::simd::Simd<$elem, $lanes>,
+        }
 
-        let width = $data.block.max.x - $data.block.min.x;
-        let height = $data.block.max.y - $data.block.min.y;
+        impl $crate::rast::Rasterizer<'_, $elem> for $type {
+            fn new() -> Self {
+                use std::simd::Simd;
 
-        for tri in $data.list {
-            for i in (0..width * height).step_by($lanes) {
-                let x = i % width + $data.block.min.x;
-                let y = i / width + $data.block.min.y;
+                Self {
+                    n_vec: Simd::<$elem, $lanes>::from_slice(
+                        &(0..$lanes).map(|i| i as $elem).collect::<Vec<$elem>>(),
+                    ),
+                }
+            }
 
-                let x_as = x as $elem;
-                let y_as = y as $elem;
+            fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Point<$elem>; 3]]) {
+                use std::simd::{Mask, Simd};
+                use $crate::rast::simd::*;
 
-                let x_vec = Simd::<$elem, $lanes>::from_slice(
-                    &(x_as..x_as + $lanes).collect::<Vec<$elem>>(),
-                );
-                let y_vec = Simd::<$elem, $lanes>::from_slice(&[y_as; $lanes]);
+                let width = block.max.x - block.min.x;
+                let height = block.max.y - block.min.y;
 
-                let mask = triangle_mask(Point { x: x_vec, y: y_vec }, tri);
+                let width_vec = Simd::<$elem, $lanes>::from_slice(&[width as $elem; $lanes]);
 
-                if mask.any() {
-                    let i = y * $data.frame.width + x;
-                    let white = !Simd::<u32, $lanes>::default();
-                    white.store_select(&mut $data.frame.dst[i..i + $lanes], mask);
+                for tri in list {
+                    for i in (0..width * height).step_by($lanes) {
+                        let i_vec = self.n_vec + &[i as $elem; $lanes].into();
+                        let x_vec = i_vec % width_vec;
+                        let y_vec = i_vec / width_vec;
+
+                        let mask = triangle_mask(Point { x: x_vec, y: y_vec }, tri);
+
+                        if mask.any() {
+                            let x = unsafe {
+                                std::mem::transmute::<Simd<$elem, $lanes>, [$elem; $lanes]>(x_vec)
+                            }[0] as usize;
+                            let y = unsafe {
+                                std::mem::transmute::<Simd<$elem, $lanes>, [$elem; $lanes]>(y_vec)
+                            }[0] as usize;
+
+                            let white = !Simd::<u32, $lanes>::default();
+                            white.store_select(&mut frame.dst[y * frame.width + x..], mask);
+                        }
+                    }
                 }
             }
         }
-    }};
+    };
 }
 
 #[inline(always)]

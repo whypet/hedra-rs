@@ -5,6 +5,11 @@ pub mod simd;
 
 pub type Pixel = Point<usize>;
 
+pub trait Rasterizer<'a, T> {
+    fn new() -> Self;
+    fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [[Point<T>; 3]]);
+}
+
 pub struct Frame<'a> {
     pub dst: &'a mut [u32],
     pub width: usize,
@@ -20,12 +25,6 @@ pub struct Point<T> {
 pub struct Block {
     pub min: Pixel,
     pub max: Pixel,
-}
-
-pub struct TriangleRasterizerData<'a, T> {
-    pub frame: Frame<'a>,
-    pub block: Block,
-    pub list: &'a [[Point<T>; 3]],
 }
 
 impl From<Pixel> for Point<i32> {
