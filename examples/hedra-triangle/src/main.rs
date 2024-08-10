@@ -81,8 +81,8 @@ impl ApplicationHandler for App {
                         height: size.height as usize,
                     },
                     Block {
-                        min: Pixel { x: 25, y: 25 },
-                        max: Pixel { x: 89, y: 89 },
+                        min: Pixel { x: 16, y: 16 },
+                        max: Pixel { x: 80, y: 80 },
                     },
                     &[[
                         Point { x: 25, y: 25 },

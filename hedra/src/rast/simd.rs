@@ -27,13 +27,14 @@ macro_rules! simd_triangle_rasterizer {
                 use std::simd::{Mask, Simd};
                 use $crate::rast::simd::*;
 
+                let i = block.min.x * block.min.y;
                 let width = block.max.x - block.min.x;
                 let height = block.max.y - block.min.y;
 
                 let width_vec = Simd::<$elem, $lanes>::from_slice(&[width as $elem; $lanes]);
 
                 for tri in list {
-                    for i in (0..width * height).step_by($lanes) {
+                    for i in (i..i + width * height).step_by($lanes) {
                         let i_vec = self.n_vec + &[i as $elem; $lanes].into();
                         let x_vec = i_vec % width_vec;
                         let y_vec = i_vec / width_vec;
