@@ -12,7 +12,7 @@ macro_rules! simd_triangle_rasterizer {
             n_vec: std::simd::Simd<$elem, $lanes>,
         }
 
-        impl $crate::rast::Rasterizer<'_, $elem> for $type {
+        impl $crate::raster::Rasterizer<'_, $elem> for $type {
             fn new() -> Self {
                 use std::simd::Simd;
 
@@ -25,7 +25,7 @@ macro_rules! simd_triangle_rasterizer {
 
             fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Point<$elem>; 3]]) {
                 use std::simd::{Mask, Simd};
-                use $crate::rast::simd::*;
+                use $crate::raster::simd::*;
 
                 let i = block.min.x * block.min.y;
                 let width = block.max.x - block.min.x;

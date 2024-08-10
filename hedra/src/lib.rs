@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 
-pub mod buf;
-pub mod rast;
+pub mod buffer;
+pub mod raster;
 
 /*
 pub struct Pipeline<'a, T, R: Rasterizer<'a, T>> {

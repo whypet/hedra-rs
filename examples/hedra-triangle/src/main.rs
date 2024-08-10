@@ -4,7 +4,7 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::time::Instant;
 
-use hedra::rast::{Block, Frame, Pixel, Point, Rasterizer};
+use hedra::raster::{Block, Frame, Pixel, Point, Rasterizer};
 use hedra::simd_triangle_rasterizer;
 
 use softbuffer::{Context, Surface};
