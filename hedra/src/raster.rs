@@ -6,7 +6,6 @@ pub mod simd;
 pub type Pixel = Point<usize>;
 
 pub trait Rasterizer<'a, T> {
-    fn new() -> Self;
     fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [[Point<T>; 3]]);
 }
 
@@ -40,16 +39,3 @@ impl From<Pixel> for Point<i32> {
 fn edge<T: Sub<Output = T> + Mul<Output = T>>(p: Point<T>, v1: Point<T>, dv: Point<T>) -> T {
     (dv.x * (p.y - v1.y)) - (dv.y * (p.x - v1.x))
 }
-
-/*
-fn triangle_bounds(frame: &Frame<'_>, tri: &[Pixel; 3]) {
-    let min = (
-        tri.iter().min_by(|a, b| a.x.cmp(&b.x)),
-        tri.iter().min_by(|a, b| a.y.cmp(&b.y)),
-    );
-    let max = (
-        tri.iter().max_by(|a, b| a.x.cmp(&b.x)),
-        tri.iter().max_by(|a, b| a.y.cmp(&b.y)),
-    );
-}
-*/

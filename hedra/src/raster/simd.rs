@@ -3,30 +3,40 @@ use std::{
     simd::{cmp::SimdPartialOrd, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount},
 };
 
-use super::Point;
+use super::{Block, Frame, Point};
 
-#[macro_export]
 macro_rules! simd_triangle_rasterizer {
-    ($type:ident<$elem:ty,$lanes:literal>) => {
-        struct $type {
-            n_vec: std::simd::Simd<$elem, $lanes>,
+    (overflow_check $frame:ident,$x:ident,$y:ident) => {
+        if $x > $frame.width {
+            continue;
         }
+        if $y > $frame.height {
+            continue;
+        }
+    };
 
-        impl $crate::raster::Rasterizer<'_, $elem> for $type {
-            fn new() -> Self {
-                use std::simd::Simd;
+    (overflow_check f32 $frame:ident,$x:ident,$y:ident) => {};
+    (overflow_check f64 $frame:ident,$x:ident,$y:ident) => {};
+    (overflow_check i8 $frame:ident,$x:ident,$y:ident) => {
+        simd_triangle_rasterizer!(overflow_check $frame,$x,$y)
+    };
+    (overflow_check i16 $frame:ident,$x:ident,$y:ident) => {};
+    (overflow_check i32 $frame:ident,$x:ident,$y:ident) => {};
+    (overflow_check i64 $frame:ident,$x:ident,$y:ident) => {};
 
+    ($type:ident<$elem:tt,$lanes:literal>) => {
+        impl Default for $type<$elem, $lanes> {
+            fn default() -> Self {
                 Self {
                     n_vec: Simd::<$elem, $lanes>::from_slice(
                         &(0..$lanes).map(|i| i as $elem).collect::<Vec<$elem>>(),
                     ),
                 }
             }
+        }
 
+        impl $crate::raster::Rasterizer<'_, $elem> for $type<$elem, $lanes> {
             fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Point<$elem>; 3]]) {
-                use std::simd::{Mask, Simd};
-                use $crate::raster::simd::*;
-
                 let i = block.min.x * block.min.y;
                 let width = block.max.x - block.min.x;
                 let height = block.max.y - block.min.y;
@@ -49,15 +59,46 @@ macro_rules! simd_triangle_rasterizer {
                                 std::mem::transmute::<Simd<$elem, $lanes>, [$elem; $lanes]>(y_vec)
                             }[0] as usize;
 
+                            simd_triangle_rasterizer!(overflow_check $elem frame, x, y);
+
                             let white = !Simd::<u32, $lanes>::default();
-                            white.store_select(&mut frame.dst[y * frame.width + x..], mask);
+                            white.store_select(&mut frame.dst[y * frame.width + x..], mask.into());
                         }
                     }
                 }
             }
         }
     };
+
+    ($type:ident<$elem:tt>) => {
+        simd_triangle_rasterizer!($type<$elem, 1>);
+        simd_triangle_rasterizer!($type<$elem, 2>);
+        simd_triangle_rasterizer!($type<$elem, 4>);
+        simd_triangle_rasterizer!($type<$elem, 8>);
+        simd_triangle_rasterizer!($type<$elem, 16>);
+        simd_triangle_rasterizer!($type<$elem, 32>);
+        simd_triangle_rasterizer!($type<$elem, 64>);
+    };
+
+    ($type:ident) => {
+        simd_triangle_rasterizer!($type<f32>);
+        simd_triangle_rasterizer!($type<f64>);
+        simd_triangle_rasterizer!($type<i8>);
+        simd_triangle_rasterizer!($type<i16>);
+        simd_triangle_rasterizer!($type<i32>);
+        simd_triangle_rasterizer!($type<i64>);
+    };
 }
+
+pub struct SimdRasterizer<T, const N: usize>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: SimdElement,
+{
+    n_vec: std::simd::Simd<T, N>,
+}
+
+simd_triangle_rasterizer!(SimdRasterizer);
 
 #[inline(always)]
 fn edge<T, const N: usize>(

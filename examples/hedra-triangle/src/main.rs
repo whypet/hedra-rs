@@ -4,8 +4,8 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::time::Instant;
 
+use hedra::raster::simd::SimdRasterizer;
 use hedra::raster::{Block, Frame, Pixel, Point, Rasterizer};
-use hedra::simd_triangle_rasterizer;
 
 use softbuffer::{Context, Surface};
 use winit::application::ApplicationHandler;
@@ -13,12 +13,10 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
-simd_triangle_rasterizer!(Rast<i32, 64>);
-
 struct AppData {
     window: Rc<Window>,
     surface: Surface<Rc<Window>, Rc<Window>>,
-    rast: Rast,
+    rast: SimdRasterizer<i16, 64>,
     instant: Instant,
     frames: usize,
 }
@@ -37,9 +35,7 @@ impl ApplicationHandler for App {
         );
         let context = Context::new(window.clone()).unwrap();
         let surface = Surface::new(&context, window.clone()).unwrap();
-
-        let rast = Rasterizer::new();
-
+        let rast = Default::default();
         let instant = Instant::now();
 
         self.data = Some(AppData {
