@@ -6,7 +6,7 @@ use std::{
 use super::{Block, Frame, Point};
 
 macro_rules! simd_triangle_rasterizer {
-    (overflow_check $frame:ident,$x:ident,$y:ident) => {
+    (overflow_check($frame:ident,$x:ident,$y:ident)) => {
         if $x > $frame.width {
             continue;
         }
@@ -15,14 +15,10 @@ macro_rules! simd_triangle_rasterizer {
         }
     };
 
-    (overflow_check f32 $frame:ident,$x:ident,$y:ident) => {};
-    (overflow_check f64 $frame:ident,$x:ident,$y:ident) => {};
-    (overflow_check i8 $frame:ident,$x:ident,$y:ident) => {
-        simd_triangle_rasterizer!(overflow_check $frame,$x,$y)
+    (overflow_check<i8>($frame:ident,$x:ident,$y:ident)) => {
+        simd_triangle_rasterizer!(overflow_check($frame,$x,$y))
     };
-    (overflow_check i16 $frame:ident,$x:ident,$y:ident) => {};
-    (overflow_check i32 $frame:ident,$x:ident,$y:ident) => {};
-    (overflow_check i64 $frame:ident,$x:ident,$y:ident) => {};
+    (overflow_check<$t:tt>($frame:ident,$x:ident,$y:ident)) => {};
 
     ($type:ident<$elem:tt,$lanes:literal>) => {
         impl Default for $type<$elem, $lanes> {
@@ -59,7 +55,7 @@ macro_rules! simd_triangle_rasterizer {
                                 std::mem::transmute::<Simd<$elem, $lanes>, [$elem; $lanes]>(y_vec)
                             }[0] as usize;
 
-                            simd_triangle_rasterizer!(overflow_check $elem frame, x, y);
+                            simd_triangle_rasterizer!(overflow_check<$elem>(frame, x, y));
 
                             let white = !Simd::<u32, $lanes>::default();
                             white.store_select(&mut frame.dst[y * frame.width + x..], mask.into());
