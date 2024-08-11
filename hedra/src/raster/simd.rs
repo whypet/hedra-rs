@@ -86,6 +86,7 @@ macro_rules! simd_triangle_rasterizer {
     };
 }
 
+#[derive(Debug)]
 pub struct SimdRasterizer<T, const N: usize>
 where
     LaneCount<N>: SupportedLaneCount,

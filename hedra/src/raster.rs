@@ -9,6 +9,7 @@ pub trait Rasterizer<'a, T> {
     fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [[Point<T>; 3]]);
 }
 
+#[derive(Debug)]
 pub struct Frame<'a> {
     pub dst: &'a mut [u32],
     pub width: usize,
@@ -21,6 +22,7 @@ pub struct Point<T> {
     pub y: T,
 }
 
+#[derive(Debug)]
 pub struct Block {
     pub min: Pixel,
     pub max: Pixel,
