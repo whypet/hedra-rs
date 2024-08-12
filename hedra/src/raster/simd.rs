@@ -133,7 +133,7 @@ where
 }
 
 #[inline(always)]
-pub fn triangle_mask<T, const N: usize>(p: Vec2<Simd<T, N>>, tri: &[Vec2<T>; 3]) -> Mask<T::Mask, N>
+fn triangle_mask<T, const N: usize>(p: Vec2<Simd<T, N>>, tri: &[Vec2<T>; 3]) -> Mask<T::Mask, N>
 where
     Simd<T, N>: Sub<Output = Simd<T, N>>
         + Mul<Output = Simd<T, N>>
