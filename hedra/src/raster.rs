@@ -8,7 +8,7 @@ pub mod simd;
 pub type Pixel = Vec2<usize>;
 
 pub trait Rasterizer<'a, T> {
-    fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [[Vec2<T>; 3]]);
+    fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [Vec2<T>]);
 }
 
 #[derive(Debug)]

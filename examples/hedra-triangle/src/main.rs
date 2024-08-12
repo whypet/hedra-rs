@@ -17,7 +17,7 @@ use winit::window::{Window, WindowId};
 struct AppData {
     window: Rc<Window>,
     surface: Surface<Rc<Window>, Rc<Window>>,
-    rast: SimdRasterizer<i16, 64>,
+    rast: SimdRasterizer<i32, 64>,
     instant: Instant,
     frames: usize,
 }
@@ -81,11 +81,11 @@ impl ApplicationHandler for App {
                         min: Pixel { x: 16, y: 16 },
                         max: Pixel { x: 80, y: 80 },
                     },
-                    &[[
+                    &[
                         Vec2 { x: 25, y: 25 },
                         Vec2 { x: 75, y: 25 },
                         Vec2 { x: 75, y: 75 },
-                    ]],
+                    ],
                 );
 
                 buffer.present().unwrap();

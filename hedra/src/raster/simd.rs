@@ -80,20 +80,24 @@ where
         + SimdTransmute<T, N>,
     Mask<i32, N>: From<Mask<T::Mask, N>>,
 {
-    fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Vec2<T>; 3]]) {
+    fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [Vec2<T>]) {
+        assert!(list.len() % 3 == 0);
+
         let i = block.min.x * block.min.y;
         let width = block.max.x - block.min.x;
         let height = block.max.y - block.min.y;
 
         let width_vec = Simd::<T, N>::from_slice(&[width.to_num(); N]);
 
-        for tri in list {
+        let mut iter = list.iter();
+
+        while let (Some(v1), Some(v2), Some(v3)) = (iter.next(), iter.next(), iter.next()) {
             for i in (i..i + width * height).step_by(N) {
                 let i_vec = self.n_vec + [i.to_num(); N].into();
                 let x_vec = i_vec % width_vec;
                 let y_vec = i_vec / width_vec;
 
-                let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, tri);
+                let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, &[*v1, *v2, *v3]);
 
                 if mask.any() {
                     let x = NumberCast::<usize>::to_num(unsafe { x_vec.transmute() }[0]);
@@ -133,7 +137,7 @@ where
 }
 
 #[inline(always)]
-fn triangle_mask<T, const N: usize>(p: Vec2<Simd<T, N>>, tri: &[Vec2<T>; 3]) -> Mask<T::Mask, N>
+fn triangle_mask<T, const N: usize>(p: Vec2<Simd<T, N>>, v: &[Vec2<T>; 3]) -> Mask<T::Mask, N>
 where
     Simd<T, N>: Sub<Output = Simd<T, N>>
         + Mul<Output = Simd<T, N>>
@@ -141,7 +145,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: Default + SimdElement,
 {
-    let v = tri.map(|v| Vec2 {
+    let v = v.map(|v| Vec2 {
         x: Simd::<T, N>::from_slice(&[v.x; N]),
         y: Simd::<T, N>::from_slice(&[v.y; N]),
     });
