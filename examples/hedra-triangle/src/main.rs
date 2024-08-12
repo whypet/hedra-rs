@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use hedra::math::Vec2;
-use hedra::raster::simd::SimdRasterizer;
+use hedra::raster::simd::SimdTriangleRasterizer;
 use hedra::raster::{Block, Frame, Pixel, Rasterizer};
 
 use softbuffer::{Context, Surface};
@@ -17,7 +17,7 @@ use winit::window::{Window, WindowId};
 struct AppData {
     window: Rc<Window>,
     surface: Surface<Rc<Window>, Rc<Window>>,
-    rast: SimdRasterizer<i32, 64>,
+    rast: SimdTriangleRasterizer<i32, 64>,
     instant: Instant,
     frames: usize,
 }

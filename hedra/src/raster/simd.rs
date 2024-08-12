@@ -45,7 +45,7 @@ impl RasterOverflowCheck for i8 {
 overflow_check_impl!();
 
 #[derive(Debug)]
-pub struct SimdRasterizer<T, const N: usize>
+pub struct SimdTriangleRasterizer<T, const N: usize>
 where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
@@ -53,7 +53,7 @@ where
     n_vec: std::simd::Simd<T, N>,
 }
 
-impl<T, const N: usize> Default for SimdRasterizer<T, N>
+impl<T, const N: usize> Default for SimdTriangleRasterizer<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
@@ -66,7 +66,7 @@ where
     }
 }
 
-impl<T, const N: usize> Rasterizer<'_, T> for SimdRasterizer<T, N>
+impl<T, const N: usize> Rasterizer<'_, T> for SimdTriangleRasterizer<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
     T: Default + SimdElement + NumberCast<usize> + RasterOverflowCheck,
