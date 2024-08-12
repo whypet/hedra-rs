@@ -89,11 +89,8 @@ pub trait One {
     const ONE: Self;
 }
 
-pub trait Cartesian
-where
-    Self: Sized,
-{
-    fn to_barycentric(v1: Vec2<Self>, v2: Vec2<Self>, v3: Vec2<Self>, p: Vec2<Self>) -> Vec3<Self>;
+pub trait Cartesian<T> {
+    fn to_barycentric(self, v1: Vec2<T>, v2: Vec2<T>, v3: Vec2<T>) -> Vec3<T>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -109,18 +106,26 @@ pub struct Vec3<T> {
     pub z: T,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Vec4<T> {
+    pub x: T,
+    pub y: T,
+    pub z: T,
+    pub w: T,
+}
+
 one_impl!();
 #[cfg(feature = "simd")]
 one_simd_impl!();
 
 impl<T: Copy + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>>
-    Cartesian for T
+    Cartesian<T> for Vec2<T>
 {
-    fn to_barycentric(v1: Vec2<Self>, v2: Vec2<Self>, v3: Vec2<Self>, p: Vec2<Self>) -> Vec3<Self> {
-        let x_x3 = p.x - v3.x;
+    fn to_barycentric(self, v1: Vec2<T>, v2: Vec2<T>, v3: Vec2<T>) -> Vec3<T> {
+        let x_x3 = self.x - v3.x;
         let x1_x3 = v1.x - v3.x;
         let x3_x2 = v3.x - v2.x;
-        let y_y3 = p.y - v3.y;
+        let y_y3 = self.y - v3.y;
         let y1_y3 = v1.y - v3.y;
         let y2_y3 = v2.y - v3.y;
         let y3_y1 = v3.y - v1.y;
@@ -135,7 +140,7 @@ impl<T: Copy + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<O
         Vec3 {
             x: l1,
             y: l2,
-            z: Self::ONE - l1 - l2,
+            z: T::ONE - l1 - l2,
         }
     }
 }

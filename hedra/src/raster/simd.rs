@@ -100,8 +100,8 @@ where
                 let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, &[*v1, *v2, *v3]);
 
                 if mask.any() {
-                    let x = NumberCast::<usize>::to_num(unsafe { x_vec.transmute() }[0]);
-                    let y = NumberCast::<usize>::to_num(unsafe { y_vec.transmute() }[0]);
+                    let x = unsafe { x_vec.transmute() }[0].to_num();
+                    let y = unsafe { y_vec.transmute() }[0].to_num();
 
                     if T::overflow_check(x, y, frame.width, frame.height) {
                         continue;
