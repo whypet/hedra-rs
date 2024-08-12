@@ -3,7 +3,7 @@ use std::{
     simd::{cmp::SimdPartialOrd, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount},
 };
 
-use super::{Block, Frame, Point};
+use super::{Block, Frame, Vec2};
 
 macro_rules! simd_triangle_rasterizer {
     (overflow_check($frame:ident,$x:ident,$y:ident)) => {
@@ -32,7 +32,7 @@ macro_rules! simd_triangle_rasterizer {
         }
 
         impl $crate::raster::Rasterizer<'_, $elem> for $type<$elem, $lanes> {
-            fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Point<$elem>; 3]]) {
+            fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Vec2<$elem>; 3]]) {
                 let i = block.min.x * block.min.y;
                 let width = block.max.x - block.min.x;
                 let height = block.max.y - block.min.y;
@@ -45,7 +45,7 @@ macro_rules! simd_triangle_rasterizer {
                         let x_vec = i_vec % width_vec;
                         let y_vec = i_vec / width_vec;
 
-                        let mask = triangle_mask(Point { x: x_vec, y: y_vec }, tri);
+                        let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, tri);
 
                         if mask.any() {
                             let x = unsafe {
@@ -83,6 +83,7 @@ macro_rules! simd_triangle_rasterizer {
         simd_triangle_rasterizer!($type<i16>);
         simd_triangle_rasterizer!($type<i32>);
         simd_triangle_rasterizer!($type<i64>);
+        simd_triangle_rasterizer!($type<isize>);
     };
 }
 
@@ -99,9 +100,9 @@ simd_triangle_rasterizer!(SimdRasterizer);
 
 #[inline(always)]
 fn edge<T, const N: usize>(
-    p: Point<Simd<T, N>>,
-    v1: Point<Simd<T, N>>,
-    v2: Point<Simd<T, N>>,
+    p: Vec2<Simd<T, N>>,
+    v1: Vec2<Simd<T, N>>,
+    v2: Vec2<Simd<T, N>>,
 ) -> Simd<T, N>
 where
     Simd<T, N>: Sub<Output = Simd<T, N>> + Mul<Output = Simd<T, N>>,
@@ -111,7 +112,7 @@ where
     super::edge(
         p,
         v1,
-        Point {
+        Vec2 {
             x: v2.x - v1.x,
             y: v2.y - v1.y,
         },
@@ -119,10 +120,7 @@ where
 }
 
 #[inline(always)]
-pub fn triangle_mask<T, const N: usize>(
-    p: Point<Simd<T, N>>,
-    tri: &[Point<T>; 3],
-) -> Mask<T::Mask, N>
+pub fn triangle_mask<T, const N: usize>(p: Vec2<Simd<T, N>>, tri: &[Vec2<T>; 3]) -> Mask<T::Mask, N>
 where
     Simd<T, N>: Sub<Output = Simd<T, N>>
         + Mul<Output = Simd<T, N>>
@@ -130,7 +128,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: Default + SimdElement,
 {
-    let v = tri.map(|v| Point {
+    let v = tri.map(|v| Vec2 {
         x: Simd::<T, N>::from_slice(&[v.x; N]),
         y: Simd::<T, N>::from_slice(&[v.y; N]),
     });

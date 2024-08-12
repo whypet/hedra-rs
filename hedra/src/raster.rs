@@ -1,12 +1,14 @@
 use std::ops::{Mul, Sub};
 
+use crate::math::Vec2;
+
 #[cfg(feature = "simd")]
 pub mod simd;
 
-pub type Pixel = Point<usize>;
+pub type Pixel = Vec2<usize>;
 
 pub trait Rasterizer<'a, T> {
-    fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [[Point<T>; 3]]);
+    fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [[Vec2<T>; 3]]);
 }
 
 #[derive(Debug)]
@@ -16,28 +18,13 @@ pub struct Frame<'a> {
     pub height: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Point<T> {
-    pub x: T,
-    pub y: T,
-}
-
 #[derive(Debug)]
 pub struct Block {
     pub min: Pixel,
     pub max: Pixel,
 }
 
-impl From<Pixel> for Point<i32> {
-    fn from(value: Pixel) -> Self {
-        Self {
-            x: value.x as i32,
-            y: value.y as i32,
-        }
-    }
-}
-
 #[inline(always)]
-fn edge<T: Sub<Output = T> + Mul<Output = T>>(p: Point<T>, v1: Point<T>, dv: Point<T>) -> T {
+fn edge<T: Sub<Output = T> + Mul<Output = T>>(p: Vec2<T>, v1: Vec2<T>, dv: Vec2<T>) -> T {
     (dv.x * (p.y - v1.y)) - (dv.y * (p.x - v1.x))
 }

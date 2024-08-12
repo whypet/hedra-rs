@@ -4,8 +4,9 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::time::Instant;
 
+use hedra::math::Vec2;
 use hedra::raster::simd::SimdRasterizer;
-use hedra::raster::{Block, Frame, Pixel, Point, Rasterizer};
+use hedra::raster::{Block, Frame, Pixel, Rasterizer};
 
 use softbuffer::{Context, Surface};
 use winit::application::ApplicationHandler;
@@ -81,9 +82,9 @@ impl ApplicationHandler for App {
                         max: Pixel { x: 80, y: 80 },
                     },
                     &[[
-                        Point { x: 25, y: 25 },
-                        Point { x: 75, y: 25 },
-                        Point { x: 75, y: 75 },
+                        Vec2 { x: 25, y: 25 },
+                        Vec2 { x: 75, y: 25 },
+                        Vec2 { x: 75, y: 75 },
                     ]],
                 );
 
