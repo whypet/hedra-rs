@@ -1,91 +1,48 @@
 use std::{
-    ops::{Mul, Sub},
+    ops::{Add, Div, Mul, Rem, Sub},
     simd::{cmp::SimdPartialOrd, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount},
 };
 
-use super::{Block, Frame, Vec2};
+use crate::{NumberCast, SimdTransmute};
 
-macro_rules! simd_triangle_rasterizer {
-    (overflow_check($frame:ident,$x:ident,$y:ident)) => {
-        if $x > $frame.width {
-            continue;
-        }
-        if $y > $frame.height {
-            continue;
-        }
-    };
+use super::{Block, Frame, Rasterizer, Vec2};
 
-    (overflow_check<i8>($frame:ident,$x:ident,$y:ident)) => {
-        simd_triangle_rasterizer!(overflow_check($frame,$x,$y))
-    };
-    (overflow_check<$t:tt>($frame:ident,$x:ident,$y:ident)) => {};
-
-    ($type:ident<$elem:tt,$lanes:literal>) => {
-        impl Default for $type<$elem, $lanes> {
-            fn default() -> Self {
-                Self {
-                    n_vec: Simd::<$elem, $lanes>::from_slice(
-                        &(0..$lanes).map(|i| i as $elem).collect::<Vec<$elem>>(),
-                    ),
-                }
-            }
-        }
-
-        impl $crate::raster::Rasterizer<'_, $elem> for $type<$elem, $lanes> {
-            fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Vec2<$elem>; 3]]) {
-                let i = block.min.x * block.min.y;
-                let width = block.max.x - block.min.x;
-                let height = block.max.y - block.min.y;
-
-                let width_vec = Simd::<$elem, $lanes>::from_slice(&[width as $elem; $lanes]);
-
-                for tri in list {
-                    for i in (i..i + width * height).step_by($lanes) {
-                        let i_vec = self.n_vec + &[i as $elem; $lanes].into();
-                        let x_vec = i_vec % width_vec;
-                        let y_vec = i_vec / width_vec;
-
-                        let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, tri);
-
-                        if mask.any() {
-                            let x = unsafe {
-                                std::mem::transmute::<Simd<$elem, $lanes>, [$elem; $lanes]>(x_vec)
-                            }[0] as usize;
-                            let y = unsafe {
-                                std::mem::transmute::<Simd<$elem, $lanes>, [$elem; $lanes]>(y_vec)
-                            }[0] as usize;
-
-                            simd_triangle_rasterizer!(overflow_check<$elem>(frame, x, y));
-
-                            let white = !Simd::<u32, $lanes>::default();
-                            white.store_select(&mut frame.dst[y * frame.width + x..], mask.into());
-                        }
-                    }
-                }
+macro_rules! overflow_check_impl {
+    ($t:tt) => {
+        impl RasterOverflowCheck for $t {
+            #[inline(always)]
+            fn overflow_check(_: usize, _: usize, _: usize, _: usize) -> bool {
+                false
             }
         }
     };
 
-    ($type:ident<$elem:tt>) => {
-        simd_triangle_rasterizer!($type<$elem, 1>);
-        simd_triangle_rasterizer!($type<$elem, 2>);
-        simd_triangle_rasterizer!($type<$elem, 4>);
-        simd_triangle_rasterizer!($type<$elem, 8>);
-        simd_triangle_rasterizer!($type<$elem, 16>);
-        simd_triangle_rasterizer!($type<$elem, 32>);
-        simd_triangle_rasterizer!($type<$elem, 64>);
-    };
-
-    ($type:ident) => {
-        simd_triangle_rasterizer!($type<f32>);
-        simd_triangle_rasterizer!($type<f64>);
-        simd_triangle_rasterizer!($type<i8>);
-        simd_triangle_rasterizer!($type<i16>);
-        simd_triangle_rasterizer!($type<i32>);
-        simd_triangle_rasterizer!($type<i64>);
-        simd_triangle_rasterizer!($type<isize>);
+    () => {
+        overflow_check_impl!(i16);
+        overflow_check_impl!(i32);
+        overflow_check_impl!(i64);
+        overflow_check_impl!(isize);
+        overflow_check_impl!(u16);
+        overflow_check_impl!(u32);
+        overflow_check_impl!(u64);
+        overflow_check_impl!(usize);
+        overflow_check_impl!(f32);
+        overflow_check_impl!(f64);
     };
 }
+
+trait RasterOverflowCheck {
+    fn overflow_check(x: usize, y: usize, width: usize, height: usize) -> bool;
+}
+
+impl RasterOverflowCheck for i8 {
+    #[inline(always)]
+    fn overflow_check(x: usize, y: usize, width: usize, height: usize) -> bool {
+        x >= width || y >= height
+    }
+}
+
+overflow_check_impl!();
 
 #[derive(Debug)]
 pub struct SimdRasterizer<T, const N: usize>
@@ -96,7 +53,63 @@ where
     n_vec: std::simd::Simd<T, N>,
 }
 
-simd_triangle_rasterizer!(SimdRasterizer);
+impl<T, const N: usize> Default for SimdRasterizer<T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: SimdElement,
+    usize: NumberCast<T>,
+{
+    fn default() -> Self {
+        Self {
+            n_vec: Simd::<T, N>::from_slice(&(0..N).map(|i| i.to_num()).collect::<Vec<T>>()),
+        }
+    }
+}
+
+impl<T, const N: usize> Rasterizer<'_, T> for SimdRasterizer<T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: Default + SimdElement + NumberCast<usize> + RasterOverflowCheck,
+    usize: NumberCast<T>,
+    Simd<T, N>: Add<Output = Simd<T, N>>
+        + Sub<Output = Simd<T, N>>
+        + Mul<Output = Simd<T, N>>
+        + Div<Output = Simd<T, N>>
+        + Rem<Output = Simd<T, N>>
+        + SimdPartialOrd<Mask = Mask<T::Mask, N>>
+        + SimdTransmute<T, N>,
+    Mask<i32, N>: From<Mask<T::Mask, N>>,
+{
+    fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [[Vec2<T>; 3]]) {
+        let i = block.min.x * block.min.y;
+        let width = block.max.x - block.min.x;
+        let height = block.max.y - block.min.y;
+
+        let width_vec = Simd::<T, N>::from_slice(&[width.to_num(); N]);
+
+        for tri in list {
+            for i in (i..i + width * height).step_by(N) {
+                let i_vec = self.n_vec + [i.to_num(); N].into();
+                let x_vec = i_vec % width_vec;
+                let y_vec = i_vec / width_vec;
+
+                let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, tri);
+
+                if mask.any() {
+                    let x = NumberCast::<usize>::to_num(unsafe { x_vec.transmute() }[0]);
+                    let y = NumberCast::<usize>::to_num(unsafe { y_vec.transmute() }[0]);
+
+                    if T::overflow_check(x, y, frame.width, frame.height) {
+                        continue;
+                    }
+
+                    let white = !Simd::<u32, N>::default();
+                    white.store_select(&mut frame.dst[y * frame.width + x..], mask.into());
+                }
+            }
+        }
+    }
+}
 
 #[inline(always)]
 fn edge<T, const N: usize>(
