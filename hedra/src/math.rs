@@ -1,88 +1,104 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-macro_rules! one_impl {
+macro_rules! num_trait_impl {
     (f<$t:tt>) => {
+        impl Zero for $t {
+            const ZERO: Self = 0.0;
+        }
         impl One for $t {
             const ONE: Self = 1.0;
         }
     };
 
     (f32) => {
-        one_impl!(f<f32>);
+        num_trait_impl!(f<f32>);
     };
     (f64) => {
-        one_impl!(f<f64>);
+        num_trait_impl!(f<f64>);
     };
 
     ($t:tt) => {
+        impl Zero for $t {
+            const ZERO: Self = 0;
+        }
         impl One for $t {
             const ONE: Self = 1;
         }
     };
 
     () => {
-        one_impl!(i8);
-        one_impl!(i16);
-        one_impl!(i32);
-        one_impl!(i64);
-        one_impl!(i128);
-        one_impl!(isize);
-        one_impl!(u8);
-        one_impl!(u16);
-        one_impl!(u32);
-        one_impl!(u64);
-        one_impl!(u128);
-        one_impl!(usize);
-        one_impl!(f32);
-        one_impl!(f64);
+        num_trait_impl!(i8);
+        num_trait_impl!(i16);
+        num_trait_impl!(i32);
+        num_trait_impl!(i64);
+        num_trait_impl!(i128);
+        num_trait_impl!(isize);
+        num_trait_impl!(u8);
+        num_trait_impl!(u16);
+        num_trait_impl!(u32);
+        num_trait_impl!(u64);
+        num_trait_impl!(u128);
+        num_trait_impl!(usize);
+        num_trait_impl!(f32);
+        num_trait_impl!(f64);
     };
 }
 
 #[cfg(feature = "simd")]
-macro_rules! one_simd_impl {
+macro_rules! num_trait_simd_impl {
     (f<$t:tt,$n:literal>) => {
+        impl Zero for std::simd::Simd<$t, $n> {
+            const ZERO: Self = std::simd::Simd::<$t, $n>::from_slice(&[0.0; $n]);
+        }
         impl One for std::simd::Simd<$t, $n> {
             const ONE: Self = std::simd::Simd::<$t, $n>::from_slice(&[1.0; $n]);
         }
     };
 
     (f32,$n:literal) => {
-        one_simd_impl!(f<f32,$n>);
+        num_trait_simd_impl!(f<f32,$n>);
     };
     (f64,$n:literal) => {
-        one_simd_impl!(f<f64,$n>);
+        num_trait_simd_impl!(f<f64,$n>);
     };
 
     ($t:tt,$n:literal) => {
+        impl Zero for std::simd::Simd<$t, $n> {
+            const ZERO: Self = std::simd::Simd::<$t, $n>::from_slice(&[0; $n]);
+        }
         impl One for std::simd::Simd<$t, $n> {
             const ONE: Self = std::simd::Simd::<$t, $n>::from_slice(&[1; $n]);
         }
     };
 
     ($t:tt) => {
-        one_simd_impl!($t, 1);
-        one_simd_impl!($t, 2);
-        one_simd_impl!($t, 4);
-        one_simd_impl!($t, 8);
-        one_simd_impl!($t, 16);
-        one_simd_impl!($t, 32);
-        one_simd_impl!($t, 64);
+        num_trait_simd_impl!($t, 1);
+        num_trait_simd_impl!($t, 2);
+        num_trait_simd_impl!($t, 4);
+        num_trait_simd_impl!($t, 8);
+        num_trait_simd_impl!($t, 16);
+        num_trait_simd_impl!($t, 32);
+        num_trait_simd_impl!($t, 64);
     };
 
     () => {
-        one_simd_impl!(f32);
-        one_simd_impl!(f64);
-        one_simd_impl!(i8);
-        one_simd_impl!(i16);
-        one_simd_impl!(i32);
-        one_simd_impl!(i64);
-        one_simd_impl!(isize);
-        one_simd_impl!(u8);
-        one_simd_impl!(u16);
-        one_simd_impl!(u32);
-        one_simd_impl!(u64);
-        one_simd_impl!(usize);
+        num_trait_simd_impl!(f32);
+        num_trait_simd_impl!(f64);
+        num_trait_simd_impl!(i8);
+        num_trait_simd_impl!(i16);
+        num_trait_simd_impl!(i32);
+        num_trait_simd_impl!(i64);
+        num_trait_simd_impl!(isize);
+        num_trait_simd_impl!(u8);
+        num_trait_simd_impl!(u16);
+        num_trait_simd_impl!(u32);
+        num_trait_simd_impl!(u64);
+        num_trait_simd_impl!(usize);
     };
+}
+
+pub trait Zero {
+    const ZERO: Self;
 }
 
 pub trait One {
@@ -114,9 +130,9 @@ pub struct Vec4<T> {
     pub w: T,
 }
 
-one_impl!();
+num_trait_impl!();
 #[cfg(feature = "simd")]
-one_simd_impl!();
+num_trait_simd_impl!();
 
 impl<T: Copy + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>>
     Cartesian<T> for Vec2<T>

@@ -1,9 +1,9 @@
 use std::{
-    ops::{Add, Div, Mul, Rem, Sub},
+    ops::{Add, BitOr, Div, Mul, Neg, Rem, Sub},
     simd::{cmp::SimdPartialOrd, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount},
 };
 
-use crate::{NumberCast, SimdTransmute};
+use crate::{math::Zero, raster::EdgeState, NumberCast, SimdTransmute};
 
 use super::{Block, Frame, Rasterizer, Vec2};
 
@@ -70,91 +70,60 @@ impl<T, const N: usize> Rasterizer<'_, T> for SimdTriangleRasterizer<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
     T: Default + SimdElement + NumberCast<usize> + RasterOverflowCheck,
-    usize: NumberCast<T>,
-    Simd<T, N>: Add<Output = Simd<T, N>>
+    Simd<T, N>: Zero
+        + Add<Output = Simd<T, N>>
         + Sub<Output = Simd<T, N>>
         + Mul<Output = Simd<T, N>>
         + Div<Output = Simd<T, N>>
         + Rem<Output = Simd<T, N>>
+        + Neg<Output = Simd<T, N>>
+        + BitOr<Output = Simd<T, N>>
         + SimdPartialOrd<Mask = Mask<T::Mask, N>>
         + SimdTransmute<T, N>,
     Mask<i32, N>: From<Mask<T::Mask, N>>,
+    Simd<u32, N>: Zero,
+    usize: NumberCast<T>,
 {
     fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [Vec2<T>]) {
-        assert!(list.len() % 3 == 0);
+        debug_assert!(list.len() % 3 == 0);
 
         let i = block.min.x * block.min.y;
         let width = block.max.x - block.min.x;
         let height = block.max.y - block.min.y;
 
         let width_vec = Simd::<T, N>::from_slice(&[width.to_num(); N]);
+        let i_vec = self.n_vec + [i.to_num(); N].into();
+        let x_vec = i_vec % width_vec;
+        let y_vec = i_vec / width_vec;
+
+        let white = !Simd::<u32, N>::ZERO;
 
         let mut iter = list.iter();
 
         while let (Some(v1), Some(v2), Some(v3)) = (iter.next(), iter.next(), iter.next()) {
-            for i in (i..i + width * height).step_by(N) {
-                let i_vec = self.n_vec + [i.to_num(); N].into();
-                let x_vec = i_vec % width_vec;
-                let y_vec = i_vec / width_vec;
+            let v = [v1, v2, v3].map(|v| Vec2 {
+                x: Simd::<T, N>::from_slice(&[v.x; N]),
+                y: Simd::<T, N>::from_slice(&[v.y; N]),
+            });
 
-                let mask = triangle_mask(Vec2 { x: x_vec, y: y_vec }, &[*v1, *v2, *v3]);
+            let mut edge = EdgeState::new(width / N, Vec2 { x: x_vec, y: y_vec }, v[0], v[1], v[2]);
+
+            for i in (i..i + width * height).step_by(N) {
+                let mask = edge.mask();
+
+                edge.step();
 
                 if mask.any() {
-                    let x = unsafe { x_vec.transmute() }[0].to_num();
-                    let y = unsafe { y_vec.transmute() }[0].to_num();
+                    let x = i % width;
+                    let y = i / width;
 
                     if T::overflow_check(x, y, frame.width, frame.height) {
                         continue;
                     }
 
-                    let white = !Simd::<u32, N>::default();
                     white.store_select(&mut frame.dst[y * frame.width + x..], mask.into());
                 }
             }
         }
     }
-}
-
-#[inline(always)]
-fn edge<T, const N: usize>(
-    p: Vec2<Simd<T, N>>,
-    v1: Vec2<Simd<T, N>>,
-    v2: Vec2<Simd<T, N>>,
-) -> Simd<T, N>
-where
-    Simd<T, N>: Sub<Output = Simd<T, N>> + Mul<Output = Simd<T, N>>,
-    LaneCount<N>: SupportedLaneCount,
-    T: SimdElement,
-{
-    super::edge(
-        p,
-        v1,
-        Vec2 {
-            x: v2.x - v1.x,
-            y: v2.y - v1.y,
-        },
-    )
-}
-
-#[inline(always)]
-fn triangle_mask<T, const N: usize>(p: Vec2<Simd<T, N>>, v: &[Vec2<T>; 3]) -> Mask<T::Mask, N>
-where
-    Simd<T, N>: Sub<Output = Simd<T, N>>
-        + Mul<Output = Simd<T, N>>
-        + SimdPartialOrd<Mask = Mask<T::Mask, N>>,
-    LaneCount<N>: SupportedLaneCount,
-    T: Default + SimdElement,
-{
-    let v = v.map(|v| Vec2 {
-        x: Simd::<T, N>::from_slice(&[v.x; N]),
-        y: Simd::<T, N>::from_slice(&[v.y; N]),
-    });
-
-    let edge1 = edge(p, v[0], v[1]);
-    let edge2 = edge(p, v[1], v[2]);
-    let edge3 = edge(p, v[2], v[0]);
-
-    let zero = Simd::<T, N>::default();
-
-    edge1.simd_ge(zero) & edge2.simd_ge(zero) & edge3.simd_ge(zero)
 }

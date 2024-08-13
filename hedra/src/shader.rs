@@ -18,10 +18,6 @@ macro_rules! shader_params {
     };
 }
 
-shader_params!(TestShaderParams {
-    @VertexIndex index: usize
-});
-
 #[derive(Debug)]
 pub enum Interpolation<T> {
     Flat(T),
