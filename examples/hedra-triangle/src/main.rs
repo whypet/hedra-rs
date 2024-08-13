@@ -2,11 +2,12 @@
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
+use std::simd::Simd;
 use std::time::Instant;
 
-use hedra::math::Vec2;
+use hedra::math::{Vec2, Zero};
 use hedra::raster::simd::SimdTriangleRasterizer;
-use hedra::raster::{Block, Frame, Pixel, Rasterizer};
+use hedra::raster::{Rasterizer, Tile};
 
 use softbuffer::{Context, Surface};
 use winit::application::ApplicationHandler;
@@ -72,20 +73,18 @@ impl ApplicationHandler for App {
                 buffer.fill(0);
 
                 data.rast.rasterize(
-                    Frame {
+                    Tile {
                         dst: &mut buffer,
-                        width: size.width as usize,
-                        height: size.height as usize,
-                    },
-                    Block {
-                        min: Pixel { x: 16, y: 16 },
-                        max: Pixel { x: 80, y: 80 },
+                        dst_width: size.width as usize,
+                        position: Vec2 { x: 16, y: 16 },
+                        dimensions: Vec2 { x: 64, y: 64 },
                     },
                     &[
                         Vec2 { x: 25, y: 25 },
                         Vec2 { x: 75, y: 25 },
                         Vec2 { x: 75, y: 75 },
                     ],
+                    |_| !Simd::<u32, 64>::ZERO,
                 );
 
                 buffer.present().unwrap();

@@ -1,5 +1,11 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 
+pub mod buffer;
+pub mod math;
+pub mod pipeline;
+pub mod raster;
+pub mod shader;
+
 use std::mem;
 
 macro_rules! num_cast_impl {
@@ -83,11 +89,6 @@ macro_rules! simd_transmute_impl {
     };
 }
 
-pub mod buffer;
-pub mod math;
-pub mod raster;
-pub mod shader;
-
 // Separate trait as to avoid implementing From/Into for primitives everywhere
 pub trait NumberCast<T> {
     fn to_num(self) -> T;
@@ -108,21 +109,3 @@ where
 num_cast_impl!();
 #[cfg(feature = "simd")]
 simd_transmute_impl!();
-
-/*
-pub struct Pipeline<'a, T, R: Rasterizer<'a, T>> {
-    _a: PhantomData<&'a ()>,
-    _t: PhantomData<T>,
-    rasterizer: R,
-}
-
-impl<'a, T, R: Rasterizer<'a, T>> Pipeline<'a, T, R> {
-    pub fn new(rasterizer: R) -> Self {
-        Self {
-            _a: PhantomData,
-            _t: PhantomData,
-            rasterizer,
-        }
-    }
-}
-*/

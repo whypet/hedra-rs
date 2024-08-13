@@ -8,24 +8,27 @@ pub mod simd;
 pub type Pixel = Vec2<usize>;
 
 pub trait Rasterizer<'a, T> {
-    fn rasterize(&mut self, frame: Frame<'a>, block: Block, list: &'a [Vec2<T>]);
+    type State;
+    type Color;
+
+    fn rasterize<F: Fn(&Self::State) -> Self::Color>(
+        &mut self,
+        tile: Tile<'a>,
+        list: &'a [Vec2<T>],
+        pixel: F,
+    );
 }
 
 #[derive(Debug)]
-pub struct Frame<'a> {
+pub struct Tile<'a> {
     pub dst: &'a mut [u32],
-    pub width: usize,
-    pub height: usize,
+    pub dst_width: usize,
+    pub position: Vec2<usize>,
+    pub dimensions: Vec2<usize>,
 }
 
 #[derive(Debug)]
-pub struct Block {
-    pub min: Pixel,
-    pub max: Pixel,
-}
-
-#[derive(Debug, Default)]
-pub struct EdgeState<T> {
+struct TriangleEdgeState<T> {
     i: usize,
     width: usize,
     step: (T, T, T),
@@ -34,7 +37,9 @@ pub struct EdgeState<T> {
     last_edges: (T, T, T),
 }
 
-impl<T: Copy + AddAssign<T> + Sub<Output = T> + Mul<Output = T> + Neg<Output = T>> EdgeState<T> {
+impl<T: Copy + AddAssign<T> + Sub<Output = T> + Mul<Output = T> + Neg<Output = T>>
+    TriangleEdgeState<T>
+{
     #[inline(always)]
     pub fn new(width: usize, p: Vec2<T>, v1: Vec2<T>, v2: Vec2<T>, v3: Vec2<T>) -> Self {
         let x1_x3 = v1.x - v3.x;

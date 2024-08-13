@@ -3,10 +3,15 @@ use std::{
     simd::{cmp::SimdPartialOrd, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount},
 };
 
-use crate::{math::Zero, raster::EdgeState, NumberCast, SimdTransmute};
+use crate::{
+    math::{One, Zero},
+    raster::TriangleEdgeState,
+    NumberCast, SimdTransmute,
+};
 
-use super::{Block, Frame, Rasterizer, Vec2};
+use super::{Rasterizer, Tile, Vec2};
 
+/*
 macro_rules! overflow_check_impl {
     ($t:tt) => {
         impl RasterOverflowCheck for $t {
@@ -43,6 +48,16 @@ impl RasterOverflowCheck for i8 {
 }
 
 overflow_check_impl!();
+*/
+
+#[derive(Debug, Clone)]
+pub struct SimdTriangleRastState<T, const N: usize>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: SimdElement,
+{
+    pub pixel: Vec2<Simd<T, N>>,
+}
 
 #[derive(Debug)]
 pub struct SimdTriangleRasterizer<T, const N: usize>
@@ -50,7 +65,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
-    n_vec: std::simd::Simd<T, N>,
+    n_vec: Simd<T, N>,
 }
 
 impl<T, const N: usize> Default for SimdTriangleRasterizer<T, N>
@@ -69,7 +84,7 @@ where
 impl<T, const N: usize> Rasterizer<'_, T> for SimdTriangleRasterizer<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
-    T: Default + SimdElement + NumberCast<usize> + RasterOverflowCheck,
+    T: Default + SimdElement + NumberCast<usize>,
     Simd<T, N>: Zero
         + Add<Output = Simd<T, N>>
         + Sub<Output = Simd<T, N>>
@@ -84,44 +99,70 @@ where
     Simd<u32, N>: Zero,
     usize: NumberCast<T>,
 {
-    fn rasterize(&mut self, frame: Frame<'_>, block: Block, list: &'_ [Vec2<T>]) {
+    type State = SimdTriangleRastState<T, N>;
+    type Color = Simd<u32, N>;
+
+    fn rasterize<F: Fn(&Self::State) -> Self::Color>(
+        &mut self,
+        tile: Tile<'_>,
+        list: &'_ [Vec2<T>],
+        pixel: F,
+    ) {
         debug_assert!(list.len() % 3 == 0);
 
-        let i = block.min.x * block.min.y;
-        let width = block.max.x - block.min.x;
-        let height = block.max.y - block.min.y;
+        let start = tile.position.y * tile.dimensions.x + tile.position.x;
+        let end = (tile.position.y + tile.dimensions.y) * tile.dimensions.x
+            + (tile.position.x + tile.dimensions.x);
+        let edge_width = tile.dimensions.x / N;
 
-        let width_vec = Simd::<T, N>::from_slice(&[width.to_num(); N]);
-        let i_vec = self.n_vec + [i.to_num(); N].into();
-        let x_vec = i_vec % width_vec;
-        let y_vec = i_vec / width_vec;
+        let start_vec = self.n_vec + [start.to_num(); N].into();
+        let width_vec = Simd::<T, N>::from_slice(&[tile.dimensions.x.to_num(); N]);
 
-        let white = !Simd::<u32, N>::ZERO;
+        let state = SimdTriangleRastState {
+            pixel: Vec2 {
+                x: start_vec % width_vec,
+                y: start_vec / width_vec,
+            },
+        };
 
-        let mut iter = list.iter();
+        let mut iter = list.iter().map(|v| Vec2 {
+            x: Simd::<T, N>::from_slice(&[v.x; N]),
+            y: Simd::<T, N>::from_slice(&[v.y; N]),
+        });
 
         while let (Some(v1), Some(v2), Some(v3)) = (iter.next(), iter.next(), iter.next()) {
-            let v = [v1, v2, v3].map(|v| Vec2 {
-                x: Simd::<T, N>::from_slice(&[v.x; N]),
-                y: Simd::<T, N>::from_slice(&[v.y; N]),
-            });
+            let mut state = state.clone();
 
-            let mut edge = EdgeState::new(width / N, Vec2 { x: x_vec, y: y_vec }, v[0], v[1], v[2]);
+            let mut edge = TriangleEdgeState::new(
+                edge_width,
+                Vec2 {
+                    x: state.pixel.x,
+                    y: state.pixel.y,
+                },
+                v1,
+                v2,
+                v3,
+            );
 
-            for i in (i..i + width * height).step_by(N) {
+            for i in (start..end).step_by(N) {
                 let mask = edge.mask();
 
                 edge.step();
 
                 if mask.any() {
-                    let x = i % width;
-                    let y = i / width;
+                    let i_vec = self.n_vec + [i.to_num(); N].into();
 
-                    if T::overflow_check(x, y, frame.width, frame.height) {
-                        continue;
-                    }
+                    state.pixel = Vec2 {
+                        x: i_vec % width_vec,
+                        y: i_vec / width_vec,
+                    };
 
-                    white.store_select(&mut frame.dst[y * frame.width + x..], mask.into());
+                    let x = NumberCast::<usize>::to_num(unsafe { state.pixel.x.transmute() }[0]);
+                    let y = NumberCast::<usize>::to_num(unsafe { state.pixel.y.transmute() }[0]);
+
+                    let color = pixel(&state);
+
+                    color.store_select(&mut tile.dst[y * tile.dst_width + x..], mask.into());
                 }
             }
         }
