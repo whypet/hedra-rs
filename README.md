@@ -12,4 +12,5 @@ Then run `cargo build` in the root directory.
 
 > [!NOTE]
 > Please note that some parts of hedra that make use of SIMD won't have a scalar equivalent as vectorized code is a bigger priority.
+>
 > Additionally, a Rust nightly compiler might be needed in the future regardless of whether the SIMD feature is enabled, as hedra tries to make use of compile-time tricks as much as possible for performance, some of which may be unstable Rust RFC features.
