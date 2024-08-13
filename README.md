@@ -8,7 +8,7 @@ If you wish to enable SIMD with the `simd` feature, you'll need to install the R
 
 `rustup toolchain install nightly`
 
-Then run `cargo build` in the root directory.
+Then run `cargo +nightly build` in the root directory.
 
 > [!NOTE]
 > Please note that some parts of hedra that make use of SIMD won't have a scalar equivalent as vectorized code is a bigger priority.
