@@ -1,28 +1,24 @@
-use std::marker::PhantomData;
-
 use crate::{
-    raster::Rasterizer,
+    math::Vec2,
+    raster::{Rasterizer, Tile},
     shader::{PixelShader, VertexShader},
 };
 
-pub struct Pipeline<'a, T, R: Rasterizer<'a, T>, VS: VertexShader<T>, PS: PixelShader<VS, T>> {
-    _a: PhantomData<&'a ()>,
-    _t: PhantomData<T>,
-    rasterizer: R,
-    vertex_shader: VS,
-    pixel_shader: PS,
+pub trait VertexState {
+    type Vertex;
+
+    fn get_vertex_index(&self) -> usize;
+    fn get_vertex(&self) -> Self::Vertex;
 }
 
-impl<'a, T, R: Rasterizer<'a, T>, VS: VertexShader<T>, PS: PixelShader<VS, T>>
-    Pipeline<'a, T, R, VS, PS>
-{
-    pub fn new(rasterizer: R, vertex_shader: VS, pixel_shader: PS) -> Self {
-        Self {
-            _a: PhantomData,
-            _t: PhantomData,
-            rasterizer,
-            vertex_shader,
-            pixel_shader,
-        }
+pub trait PixelState {
+    type Pixel;
+
+    fn get_pixel(&self) -> Self::Pixel;
+}
+
+pub trait Pipeline<'a, T>: Rasterizer<'a, T> + VertexShader<T> + PixelShader<T> {
+    fn render(&mut self, _tile: Tile<'a>, mut _list: &'a [Vec2<T>]) {
+        // self.rasterize(tile, list, pixel)
     }
 }

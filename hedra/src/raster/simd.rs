@@ -4,54 +4,13 @@ use std::{
 };
 
 use crate::{
-    math::{One, Zero},
-    raster::TriangleEdgeState,
-    NumberCast, SimdTransmute,
+    math::Zero, pipeline::PixelState, raster::TriangleEdgeState, NumberCast, SimdTransmute,
 };
 
 use super::{Rasterizer, Tile, Vec2};
 
-/*
-macro_rules! overflow_check_impl {
-    ($t:tt) => {
-        impl RasterOverflowCheck for $t {
-            #[inline(always)]
-            fn overflow_check(_: usize, _: usize, _: usize, _: usize) -> bool {
-                false
-            }
-        }
-    };
-
-    () => {
-        overflow_check_impl!(i16);
-        overflow_check_impl!(i32);
-        overflow_check_impl!(i64);
-        overflow_check_impl!(isize);
-        overflow_check_impl!(u16);
-        overflow_check_impl!(u32);
-        overflow_check_impl!(u64);
-        overflow_check_impl!(usize);
-        overflow_check_impl!(f32);
-        overflow_check_impl!(f64);
-    };
-}
-
-trait RasterOverflowCheck {
-    fn overflow_check(x: usize, y: usize, width: usize, height: usize) -> bool;
-}
-
-impl RasterOverflowCheck for i8 {
-    #[inline(always)]
-    fn overflow_check(x: usize, y: usize, width: usize, height: usize) -> bool {
-        x >= width || y >= height
-    }
-}
-
-overflow_check_impl!();
-*/
-
 #[derive(Debug, Clone)]
-pub struct SimdTriangleRastState<T, const N: usize>
+pub struct SimdTrianglePixelState<T, const N: usize>
 where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
@@ -66,6 +25,18 @@ where
     T: SimdElement,
 {
     n_vec: Simd<T, N>,
+}
+
+impl<T, const N: usize> PixelState for SimdTrianglePixelState<T, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+    T: SimdElement,
+{
+    type Pixel = Vec2<Simd<T, N>>;
+
+    fn get_pixel(&self) -> Self::Pixel {
+        self.pixel
+    }
 }
 
 impl<T, const N: usize> Default for SimdTriangleRasterizer<T, N>
@@ -96,10 +67,9 @@ where
         + SimdPartialOrd<Mask = Mask<T::Mask, N>>
         + SimdTransmute<T, N>,
     Mask<i32, N>: From<Mask<T::Mask, N>>,
-    Simd<u32, N>: Zero,
     usize: NumberCast<T>,
 {
-    type State = SimdTriangleRastState<T, N>;
+    type State = SimdTrianglePixelState<T, N>;
     type Color = Simd<u32, N>;
 
     fn rasterize<F: Fn(&Self::State) -> Self::Color>(
@@ -118,7 +88,7 @@ where
         let start_vec = self.n_vec + [start.to_num(); N].into();
         let width_vec = Simd::<T, N>::from_slice(&[tile.dimensions.x.to_num(); N]);
 
-        let state = SimdTriangleRastState {
+        let state = SimdTrianglePixelState {
             pixel: Vec2 {
                 x: start_vec % width_vec,
                 y: start_vec / width_vec,

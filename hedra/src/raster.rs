@@ -1,13 +1,17 @@
 use std::ops::{AddAssign, BitOr, Mul, Neg, Sub};
 
-use crate::math::{Vec2, Zero};
+use crate::{
+    math::{Vec2, Zero},
+    pipeline::PixelState,
+};
 
 #[cfg(feature = "simd")]
 pub mod simd;
 
-pub type Pixel = Vec2<usize>;
-
-pub trait Rasterizer<'a, T> {
+pub trait Rasterizer<'a, T>
+where
+    Self::State: PixelState,
+{
     type State;
     type Color;
 
@@ -92,6 +96,7 @@ impl<T: Copy + AddAssign<T> + Sub<Output = T> + Mul<Output = T> + Neg<Output = T
         self.next_row_test();
     }
 
+    #[allow(dead_code)] // todo: remove this line when scalar triangle rasterizer is implemented
     #[inline(always)]
     pub fn test(&self) -> bool
     where

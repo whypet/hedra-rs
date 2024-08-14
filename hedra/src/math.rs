@@ -109,20 +109,20 @@ pub trait Cartesian<T> {
     fn to_barycentric(self, v1: Vec2<T>, v2: Vec2<T>, v3: Vec2<T>) -> Vec3<T>;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Vec2<T> {
     pub x: T,
     pub y: T,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Vec3<T> {
     pub x: T,
     pub y: T,
     pub z: T,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Vec4<T> {
     pub x: T,
     pub y: T,
