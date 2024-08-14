@@ -27,7 +27,7 @@ macro_rules! shader_params {
     };
 
     (impl $t:tt<$state_arg:ident:$state:ty>{$($body:tt)*}@pixel $field:ident:$type:tt $($tail:tt)*) => {
-        use $crate::raster::RasterState;
+        use $crate::pipeline::PixelState;
         shader_params!(impl $t<$state_arg: $state> {
             $field: $state_arg.get_pixel(),
             $($body)*
